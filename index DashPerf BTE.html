@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DashPerf BTE</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+  import { toPng, toBlob } from 'https://esm.sh/html-to-image@1.11.11';
+  window._toPng  = toPng;
+  window._toBlob = toBlob;
+</script>
+
+<style>
+  :root {
+    /* ── Light Enterprise BTE theme ─────────────────────────────
+       Fond blanc cassé, surfaces légèrement grises, accents BTE bleu
+       Circet orange pour CTA secondaires. Typographie Inter tabular.  */
+    --bg:        #f0f4f8;
+    --surface:   #ffffff;
+    --surface2:  #f6f9fc;
+    --border:    #d4dde8;
+    --border2:   #e8eef5;
+    --accent:    #0066cc;           /* BTE blue */
+    --accent2:   #0099cc;           /* BTE cyan */
+    --bte-mid:   #004fa3;
+    --circet:    #e85c0d;
+    --circet2:   #ff7b35;
+    --green:     #059669;
+    --green-bg:  #ecfdf5;
+    --red:       #dc2626;
+    --red-bg:    #fef2f2;
+    --amber:     #d97706;
+    --amber-bg:  #fffbeb;
+    --purple:    #7c3aed;
+    --text:      #0f1e2e;
+    --text2:     #334e68;
+    --muted:     #637d96;
+    --muted2:    #8aa1b8;
+    --shadow:    0 1px 3px rgba(0,40,80,0.07), 0 4px 16px rgba(0,40,80,0.05);
+    --shadow-md: 0 2px 8px rgba(0,40,80,0.10), 0 8px 32px rgba(0,40,80,0.07);
+    /* BTE region palette — still vivid for charts on light bg */
+    --rc-CTA:    #0066cc;
+    --rc-SO:     #059669;
+    --rc-PACA:   #d97706;
+    --rc-INE:    #7c3aed;
+    --rc-Corse:  #0099cc;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle enterprise texture — very light dot grid */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: radial-gradient(circle, rgba(0,60,130,0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ══════ NAV ══════ */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 58px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    box-shadow: 0 1px 4px rgba(0,40,100,0.07);
+  }
+  /* BTE gradient top stripe */
+  nav::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 60%, var(--circet) 100%);
+  }
+  .nav-brand {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800; font-size: 17px; letter-spacing: -0.5px;
+    white-space: nowrap; flex-shrink: 0;
+    display: flex; align-items: center; gap: 10px;
+    color: var(--text);
+  }
+  .nav-brand-mark {
+    width: 30px; height: 30px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff; letter-spacing: 0;
+    flex-shrink: 0; font-family: 'Inter', sans-serif;
+    box-shadow: 0 2px 8px rgba(0,102,204,0.35);
+  }
+  .nav-brand-text em { color: var(--circet); font-style: normal; }
+
+  .nav-tabs { display: flex; gap: 2px; flex-wrap: wrap; }
+  .nav-tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 12.5px; font-weight: 500; color: var(--muted);
+    transition: all 0.18s; border: 1px solid transparent; white-space: nowrap;
+  }
+  .nav-tab:hover { color: var(--text2); background: var(--surface2); }
+  .nav-tab.active {
+    color: var(--accent);
+    background: rgba(0,102,204,0.07);
+    border-color: rgba(0,102,204,0.2);
+    font-weight: 600;
+  }
+  /* Camera icon in tab */
+  .tab-cam {
+    display: inline-flex; align-items: center; justify-content: center;
+    opacity: 0.35; transition: opacity 0.15s;
+    cursor: pointer;
+  }
+  .nav-tab:hover .tab-cam,
+  .nav-tab.active .tab-cam { opacity: 0.7; }
+  .tab-cam:hover { opacity: 1 !important; }
+  .tab-cam svg { width: 13px; height: 13px; }
+
+  .nav-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .nav-date { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+  /* ══════ SERVICENOW-INSPIRED IMPORT BUTTON (Interventions) ══════ */
+  .btn-tecnow {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 0 18px;
+    height: 34px;
+    border-radius: 17px;           /* full pill */
+    border: none;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.1px;
+    color: #0a2e0a;
+    background: linear-gradient(135deg, #62d84e 0%, #3ec42e 60%, #2fa822 100%);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.35) inset,
+                0 2px 8px rgba(62,196,46,0.35),
+                0 0 0 1px rgba(98,216,78,0.5);
+    transition: all 0.18s cubic-bezier(.4,0,.2,1);
+    overflow: hidden; white-space: nowrap;
+  }
+  .btn-tecnow::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 50%;
+    background: rgba(255,255,255,0.18);
+    border-radius: 17px 17px 0 0;
+    pointer-events: none;
+  }
+  .btn-tecnow:hover {
+    background: linear-gradient(135deg, #74e460 0%, #4ed438 60%, #3ab829 100%);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.35) inset,
+                0 4px 16px rgba(62,196,46,0.45),
+                0 0 0 1px rgba(98,216,78,0.7);
+    transform: translateY(-1px);
+  }
+  .btn-tecnow:active { transform: translateY(0); }
+  .btn-tecnow svg { flex-shrink: 0; }
+  .btn-tecnow-icon {
+    width: 16px; height: 16px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* hidden file input */
+  #file-input { display: none; }
+  #calls-file-input { display: none; }
+
+  /* ══════ GENESYS BUTTON ══════ */
+  /* Inspired by Genesys PureCloud design: dark navy base, electric orange accent,
+     sharp corners with subtle radius, enterprise feel */
+  .btn-genesys {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 0 16px; height: 34px; border-radius: 6px;
+    border: 1px solid rgba(232,92,13,0.45);
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.1px;
+    color: var(--circet);
+    background: rgba(232,92,13,0.04);
+    transition: all 0.18s ease;
+    white-space: nowrap; overflow: hidden;
+  }
+  .btn-genesys::before { display: none; }
+  .btn-genesys:hover {
+    background: rgba(232,92,13,0.10);
+    border-color: var(--circet);
+    color: var(--circet);
+    box-shadow: 0 2px 8px rgba(232,92,13,0.15);
+  }
+  .btn-genesys:active { background: rgba(232,92,13,0.15); transform: translateY(1px); }
+  .btn-genesys.loaded {
+    background: rgba(232,92,13,0.08);
+    border-color: var(--circet);
+    color: var(--circet);
+  }
+  .btn-genesys-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--circet); flex-shrink: 0;
+  }
+
+  /* ══════ IMPORT BANNER CALLS ══════ */
+  #calls-banner {
+    display: none;
+    background: rgba(232,92,13,0.04);
+    border: 1px solid rgba(232,92,13,0.2);
+    border-radius: 8px; padding: 6px 14px;
+    margin: 0 0 8px;
+    align-items: center; justify-content: space-between; gap: 12px;
+    animation: fadeUp 0.3s ease both;
+  }
+  #calls-banner.visible { display: flex; }
+  .calls-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--circet); flex-shrink: 0; }
+
+  /* ══════ IMPORT BANNER ══════ */
+  #import-banner {
+    display: none;
+    background: rgba(0,102,204,0.04);
+    border: 1px solid rgba(0,102,204,0.18);
+    border-radius: 8px; padding: 6px 14px;
+    margin: 0 0 8px;
+    align-items: center; justify-content: space-between; gap: 12px;
+    animation: fadeUp 0.3s ease both;
+  }
+  #import-banner.visible { display: flex; }
+  .import-info { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+  .import-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .import-filename { font-size: 12px; font-weight: 600; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .import-meta { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .import-reset { font-size: 10.5px; color: var(--muted); cursor: pointer; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); background: transparent; transition: all 0.15s; flex-shrink: 0; }
+  .import-reset:hover { color: var(--red); border-color: rgba(220,38,38,0.3); }
+
+  /* ══════ EMPTY STATE ══════ */
+  #empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 80px 24px; text-align: center; gap: 16px;
+  }
+  #empty-state.hidden { display: none; }
+  .empty-icon {
+    width: 72px; height: 72px; background: var(--surface);
+    border: 2px dashed var(--border); border-radius: 18px;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 8px;
+  }
+  .empty-title { font-family: 'Inter', sans-serif; font-size: 20px; font-weight: 700; color: var(--muted2); }
+  .empty-sub { font-size: 13px; color: var(--muted); max-width: 360px; line-height: 1.6; }
+
+  /* ══════ LAYOUT ══════ */
+  main { max-width: 1400px; margin: 0 auto; padding: 24px; position: relative; z-index: 1; }
+  .section { display: none; animation: fadeUp 0.35s ease both; }
+  .section.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ══════ SECTION HEADER ══════ */
+  .section-header { margin-bottom: 20px; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .section-header-left h2 { font-family: 'Inter', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.4px; color: var(--text); }
+  .section-header-left p { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+
+  /* ══════ GRID ══════ */
+  .grid { display: grid; gap: 14px; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+  /* ══════ CARD ══════ */
+  .card {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 18px;
+    box-shadow: var(--shadow); transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(0,102,204,0.18); box-shadow: var(--shadow-md); }
+
+  /* ══════ KPI CARD ══════ */
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 16px 20px;
+    position: relative; overflow: hidden;
+    box-shadow: var(--shadow); transition: all 0.2s;
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent-color, var(--accent));
+  }
+  .kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .kpi-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 7px; }
+  .kpi-value {
+    font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums;
+    font-size: 28px; font-weight: 700; line-height: 1; letter-spacing: -0.5px; color: var(--text);
+  }
+  .kpi-sub { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+  .kpi-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-top: 7px;
+  }
+  .badge-green { background: var(--green-bg); color: var(--green); border: 1px solid rgba(5,150,105,0.2); }
+  .badge-red   { background: var(--red-bg);   color: var(--red);   border: 1px solid rgba(220,38,38,0.2); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(217,119,6,0.2); }
+  .badge-blue  { background: rgba(0,102,204,0.07); color: var(--accent); border: 1px solid rgba(0,102,204,0.18); }
+
+  /* ══════ PERF REGION ══════ */
+  .perf-region {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); transition: box-shadow 0.2s;
+  }
+  .perf-region:hover { box-shadow: var(--shadow-md); }
+  .perf-region-header {
+    padding: 12px 16px; background: var(--surface2); border-bottom: 1px solid var(--border2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .region-name { font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; }
+  .perf-row {
+    padding: 9px 16px; display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border2);
+  }
+  .perf-row:last-child { border-bottom: none; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-ok { background: var(--green); }
+  .dot-nok { background: var(--red); }
+  .dot-other { background: var(--amber); }
+  .perf-label { flex: 1; font-size: 12.5px; color: var(--text2); }
+  .perf-count {
+    font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums;
+    font-weight: 700; font-size: 13px; width: 30px; text-align: right; color: var(--text);
+  }
+  .perf-bar-wrap { width: 90px; height: 4px; background: var(--border2); border-radius: 4px; overflow: hidden; }
+  .perf-bar { height: 100%; border-radius: 4px; transition: width 1s cubic-bezier(.4,0,.2,1); width: 0; }
+  .perf-pct {
+    font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums;
+    font-weight: 700; font-size: 12px; width: 36px; text-align: right; color: var(--text2);
+  }
+
+  /* ══════ PROGRESS ══════ */
+  .progress-row { margin-bottom: 12px; }
+  .progress-row:last-child { margin-bottom: 0; }
+  .progress-header { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; color: var(--text2); }
+  .progress-track { height: 6px; background: var(--border2); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 1.2s cubic-bezier(.4,0,.2,1); width: 0; }
+
+  /* ══════ TABLE ══════ */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .data-table th {
+    font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted);
+    padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2);
+  }
+  .data-table td { padding: 9px 14px; border-bottom: 1px solid var(--border2); color: var(--text2); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--surface2); color: var(--text); }
+  .td-num {
+    font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text);
+  }
+
+  /* ══════ PILL ══════ */
+  .pill { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
+  .pill-green  { background: var(--green-bg); color: var(--green); border: 1px solid rgba(5,150,105,0.2); }
+  .pill-red    { background: var(--red-bg);   color: var(--red);   border: 1px solid rgba(220,38,38,0.2); }
+  .pill-amber  { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(217,119,6,0.2); }
+  .pill-blue   { background: rgba(0,102,204,0.07); color: var(--accent); border: 1px solid rgba(0,102,204,0.2); }
+  .pill-purple { background: rgba(124,58,237,0.07); color: var(--purple); border: 1px solid rgba(124,58,237,0.2); }
+  .pill-grey   { background: rgba(99,125,150,0.08); color: var(--muted); border: 1px solid var(--border); }
+
+  /* ══════ AGENT TAGS (removable) ══════ */
+  .agent-tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .agent-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 8px 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    background: rgba(0,102,204,0.07); color: var(--accent);
+    border: 1px solid rgba(0,102,204,0.2);
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .agent-tag:hover { background: rgba(0,102,204,0.13); }
+  .agent-tag-remove {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%; border: none; cursor: pointer;
+    background: rgba(0,102,204,0.15); color: var(--accent);
+    font-size: 9px; line-height: 1; padding: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .agent-tag-remove:hover { background: var(--red); color: #fff; }
+  .agent-tags-counter { margin-top: 8px; font-size: 11px; color: var(--muted); }
+  .agent-tags-reset {
+    margin-top: 6px; font-size: 11px; color: var(--accent); cursor: pointer;
+    background: none; border: none; padding: 0; text-decoration: underline;
+  }
+  .agent-tags-reset:hover { color: var(--bte-mid); }
+  .divider { height: 1px; background: var(--border2); margin: 16px 0; }
+  .mb-4 { margin-bottom: 4px; } .mb-8 { margin-bottom: 8px; }
+  .mb-16 { margin-bottom: 16px; } .mb-20 { margin-bottom: 20px; }
+  .flex { display: flex; } .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; } .gap-8 { gap: 8px; }
+
+  /* RING */
+  .ring-chart { display: flex; align-items: center; gap: 16px; }
+  .ring-legend .legend-item { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: 12px; color: var(--text2); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  /* VIGIE */
+  .vigie-metric { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border2); }
+  .vigie-metric:last-child { border-bottom: none; }
+  .vigie-name { font-size: 12.5px; color: var(--text2); }
+  .vigie-val { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 14px; color: var(--text); }
+  .vigie-trend { font-size: 10.5px; padding: 2px 6px; border-radius: 4px; }
+  .trend-up { background: var(--green-bg); color: var(--green); }
+  .trend-down { background: var(--red-bg); color: var(--red); }
+  .trend-flat { background: rgba(99,125,150,0.08); color: var(--muted); }
+
+  /* STATUS CHIP */
+  .status-chip { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px; }
+
+  /* LOADING OVERLAY */
+  #loading-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(240,244,248,0.85); backdrop-filter: blur(4px);
+    z-index: 500; align-items: center; justify-content: center;
+  }
+  #loading-overlay.show { display: flex; }
+  .loader { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .loader-ring {
+    width: 44px; height: 44px;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-text { font-size: 13px; color: var(--muted); }
+
+  /* RESPONSIVE */
+  @media (max-width: 1100px) { .grid-4 { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 700px) {
+    .grid-4,.grid-3,.grid-2 { grid-template-columns: 1fr; }
+    nav { padding: 0 14px; } main { padding: 16px 12px; }
+    .nav-tabs { display: none; }
+  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted2); }
+  .overflow-auto { overflow-x: auto; }
+
+  /* INSIGHT ALERT CARDS */
+  .insight-alert { border-radius: 8px; padding: 14px; border: 1px solid; }
+  .insight-alert-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 7px; }
+  .insight-alert-body { font-size: 12.5px; color: var(--text2); line-height: 1.6; }
+  .insight-red { background: var(--red-bg); border-color: rgba(220,38,38,0.2); }
+  .insight-red .insight-alert-title { color: var(--red); }
+  .insight-amber { background: var(--amber-bg); border-color: rgba(217,119,6,0.2); }
+  .insight-amber .insight-alert-title { color: var(--amber); }
+  .insight-green { background: var(--green-bg); border-color: rgba(5,150,105,0.2); }
+  .insight-green .insight-alert-title { color: var(--green); }
+
+  /* ══════ INFO TOOLTIP ══════ */
+  .info-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; border-radius: 50%;
+    background: var(--border2); border: 1px solid var(--border);
+    font-size: 9px; font-weight: 700; font-style: italic;
+    color: var(--muted); cursor: default; flex-shrink: 0;
+    vertical-align: middle; position: relative; transition: background 0.15s;
+    font-family: Georgia, serif; line-height: 1;
+  }
+  .info-btn:hover { background: rgba(0,102,204,0.1); border-color: rgba(0,102,204,0.4); color: var(--accent); }
+  .info-btn .tip {
+    display: none; position: absolute; bottom: calc(100% + 8px);
+    left: 50%; transform: translateX(-50%);
+    min-width: 210px; max-width: 280px;
+    background: #1a2a3a; border: 1px solid rgba(0,102,204,0.3);
+    border-radius: 8px; padding: 9px 12px;
+    font-size: 11px; font-weight: 400; font-style: normal;
+    font-family: 'DM Sans', sans-serif; color: #c8d8e8; line-height: 1.55;
+    z-index: 300; pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2); white-space: normal; text-align: left;
+  }
+  .info-btn .tip::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: #1a2a3a;
+  }
+  .info-btn:hover .tip { display: block; }
+  .title-row {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--muted); margin-bottom: 12px;
+  }
+  .kpi-label-row {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--muted); margin-bottom: 7px;
+  }
+
+  /* ══════ REGION COLORS ══════ */
+  .region-CTA   { --rc: var(--rc-CTA); }
+  .region-SO    { --rc: var(--rc-SO); }
+  .region-PACA  { --rc: var(--rc-PACA); }
+  .region-INE   { --rc: var(--rc-INE); }
+  .region-Corse { --rc: var(--rc-Corse); }
+  .region-Autre { --rc: var(--muted); }
+
+  .perf-region { overflow: hidden; }
+  .perf-region-header { border-left: 3px solid var(--rc, var(--accent)); }
+  .region-name { color: var(--rc, var(--text)); }
+  .region-badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 700;
+    background: color-mix(in srgb, var(--rc, var(--accent)) 10%, transparent);
+    color: var(--rc, var(--accent));
+    border: 1px solid color-mix(in srgb, var(--rc, var(--accent)) 25%, transparent);
+    margin-left: auto;
+  }
+
+  /* FILE DRAG ZONE — visual cue */
+  body.drag-over::after {
+    content: 'Déposez votre fichier ici';
+    position: fixed; inset: 0; z-index: 999;
+    background: rgba(0,102,204,0.05);
+    border: 3px dashed rgba(0,102,204,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif; font-size: 26px; font-weight: 700;
+    color: var(--accent);
+    pointer-events: none; border-radius: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-overlay">
+  <div class="loader">
+    <div class="loader-ring"></div>
+    <div class="loader-text">Traitement du fichier…</div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-brand-mark">DP</div>
+    <span class="nav-brand-text">DashPerf <em>BTE</em></span>
+  </div>
+  <div class="nav-tabs" id="nav-tabs">
+    <div class="nav-tab active" data-section="perf">
+      Taux de Performance
+      <span class="tab-cam" title="Capturer cet onglet" onclick="captureTab(event,'section-perf')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6.5A1.5 1.5 0 0 1 2.5 5h1.382a1.5 1.5 0 0 0 1.341-.83L6 3h8l.777 1.17A1.5 1.5 0 0 0 16.118 5H17.5A1.5 1.5 0 0 1 19 6.5v10A1.5 1.5 0 0 1 17.5 18h-15A1.5 1.5 0 0 1 1 16.5v-10Z"/><circle cx="10" cy="11.5" r="3"/></svg></span>
+    </div>
+    <div class="nav-tab" data-section="vigie">
+      Vigie ST Genesys
+      <span class="tab-cam" title="Capturer cet onglet" onclick="captureTab(event,'section-vigie')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6.5A1.5 1.5 0 0 1 2.5 5h1.382a1.5 1.5 0 0 0 1.341-.83L6 3h8l.777 1.17A1.5 1.5 0 0 0 16.118 5H17.5A1.5 1.5 0 0 1 19 6.5v10A1.5 1.5 0 0 1 17.5 18h-15A1.5 1.5 0 0 1 1 16.5v-10Z"/><circle cx="10" cy="11.5" r="3"/></svg></span>
+    </div>
+    <div class="nav-tab" data-section="croisement">
+      Synapse&nbsp;Données
+      <span class="tab-cam" title="Capturer cet onglet" onclick="captureTab(event,'section-croisement')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6.5A1.5 1.5 0 0 1 2.5 5h1.382a1.5 1.5 0 0 0 1.341-.83L6 3h8l.777 1.17A1.5 1.5 0 0 0 16.118 5H17.5A1.5 1.5 0 0 1 19 6.5v10A1.5 1.5 0 0 1 17.5 18h-15A1.5 1.5 0 0 1 1 16.5v-10Z"/><circle cx="10" cy="11.5" r="3"/></svg></span>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="nav-date" id="live-date"></div>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+    <input type="file" id="calls-file-input" accept=".xlsx,.xls,.csv">
+    <button class="btn-genesys" id="btn-calls" onclick="document.getElementById('calls-file-input').click()">
+      <div class="btn-genesys-dot"></div>
+      Importer Appels
+    </button>
+    <button class="btn-tecnow" onclick="document.getElementById('file-input').click()">
+      <span class="btn-tecnow-icon">
+        <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+          <path d="M5 1v6M2 5l3-4 3 4" stroke="#0a2e0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M1 9h8" stroke="#0a2e0a" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </span>
+      Importer Interventions
+    </button>
+  </div>
+</nav>
+
+<main>
+  <!-- Import banners — compact single line -->
+  <div id="import-banner">
+    <div class="import-info">
+      <div class="import-dot"></div>
+      <span class="import-filename" id="banner-filename"></span>
+      <span class="import-meta" id="banner-meta"></span>
+    </div>
+    <button class="import-reset" onclick="resetData()">✕</button>
+  </div>
+  <div id="calls-banner">
+    <div class="import-info">
+      <div class="calls-dot"></div>
+      <span class="import-filename" id="calls-banner-filename" style="color:var(--circet)"></span>
+      <span class="import-meta" id="calls-banner-meta"></span>
+    </div>
+    <button class="import-reset" onclick="resetCallsData()">✕</button>
+  </div>
+
+  <!-- Empty state -->
+  <div id="empty-state">
+    <div class="empty-icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(0,60,130,0.2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+      </svg>
+    </div>
+    <div class="empty-title">Aucune donnée importée</div>
+    <div class="empty-sub">Importez un fichier Excel (.xlsx, .xls) ou CSV contenant vos interventions pour alimenter le dashboard. Vous pouvez aussi glisser-déposer le fichier dans la page.</div>
+  </div>
+
+  <!-- Dashboard content (hidden until data loaded) -->
+  <div id="dashboard-content" style="display:none">
+
+    <!-- ═══════ SECTION: TAUX DE PERF (+ Statut RDV fusionné) ═══════ -->
+    <section id="section-perf" class="section active">
+      <div class="section-header">
+        <div class="section-header-left">
+          <h2>Taux de Performance</h2>
+          <p>Résultats par région — TERMINEE_OK vs TERMINEE_NOK, statuts et validation</p>
+        </div>
+      </div>
+
+      <!-- Bloc 1 : 7 KPIs fusionnés (perf + validation) -->
+      <div class="grid grid-4 mb-4" id="perf-kpis-row1"></div>
+      <div class="grid grid-3 mb-16" id="perf-kpis-row2"></div>
+
+      <!-- Bloc 2 : Cartes par région -->
+      <div class="grid grid-2 mb-16" id="perf-regions"></div>
+
+      <!-- Bloc 3 : Comparaison + Répartition validation côte à côte -->
+      <div class="grid grid-2 mb-16">
+        <div class="card">
+          <div class="title-row">Comparaison des taux de succès — toutes régions<span class="info-btn">i<span class="tip">Classement des régions du meilleur au moins bon taux TERMINEE_OK. Calcul : (nb OK ÷ total RDV région) × 100.</span></span></div>
+          <!-- Two donuts side by side -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;margin-bottom:6px">
+            <div>
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--green);margin-bottom:8px">Participation aux OK</div>
+              <div class="ring-chart">
+                <svg id="perf-ring-svg" width="100" height="100" viewBox="0 0 110 110" style="flex-shrink:0"></svg>
+                <div class="ring-legend" id="perf-ring-legend"></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--red);margin-bottom:8px">Participation aux NOK</div>
+              <div class="ring-chart">
+                <svg id="perf-nok-ring-svg" width="100" height="100" viewBox="0 0 110 110" style="flex-shrink:0"></svg>
+                <div class="ring-legend" id="perf-nok-ring-legend"></div>
+              </div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div id="perf-comparison" style="padding:4px 0"></div>
+        </div>
+        <div class="card">
+          <div class="title-row">Répartition validation<span class="info-btn">i<span class="tip">Part des interventions validées (champ "Fermé par" non vide) vs non validées sur l'ensemble du fichier importé.</span></span></div>
+          <div class="ring-chart" style="margin-top:10px" id="validation-ring-wrap">
+            <svg id="validation-ring-svg" width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0"></svg>
+            <div class="ring-legend" id="validation-ring-legend"></div>
+          </div>
+          <div class="divider"></div>
+          <div class="title-row">Taux de validation par région<span class="info-btn">i<span class="tip">Pour chaque région : (nb interventions avec "Fermé par" renseigné ÷ total interventions région) × 100.</span></span></div>
+          <div id="statut-validation-bars" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ SECTION: VIGIE ST GENESYS ═══════ -->
+    <section id="section-vigie" class="section">
+      <div class="section-header">
+        <div class="section-header-left">
+          <h2>Vigie ST Genesys</h2>
+          <p id="vigie-subtitle">Importez le fichier appels pour alimenter cette section</p>
+        </div>
+      </div>
+
+      <!-- Empty state appels -->
+      <div id="vigie-empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center;gap:14px">
+        <div class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(0,60,130,0.2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 11 19.79 19.79 0 0 1 1.62 2.36 2 2 0 0 1 3.62.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 7.91a16 16 0 0 0 6.08 6.08l1.18-1.18a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+        </div>
+        <div class="empty-title" style="font-size:16px">Aucun fichier d'appels importé</div>
+        <div class="empty-sub">Cliquez sur <strong style="color:var(--circet)">Importer Appels</strong> pour charger votre export Genesys PureCloud et calculer les indicateurs QS, DMT, DMC et CT connectés.</div>
+      </div>
+
+      <!-- Dynamic Vigie content -->
+      <div id="vigie-content" style="display:none">
+        <div class="grid grid-4 mb-16" id="vigie-kpis"></div>
+        <div class="grid grid-2 mb-16">
+          <div class="card">
+            <div class="title-row">Indicateurs Genesys détaillés<span class="info-btn">i<span class="tip">Métriques calculées depuis le fichier appels importé. QS Brute = répondus ÷ total. QS Net exclut les abandons courts (≤10s). DMT = durée traitement totale. DMC = durée conversation.</span></span></div>
+            <div id="vigie-details"></div>
+          </div>
+          <div class="card">
+            <div class="title-row">CT Connectés (peak)<span class="info-btn">i<span class="tip">Liste des conseillers techniques uniques trouvés dans la colonne "Utilisateurs - Interaction". Plusieurs agents peuvent participer à un même appel (séparés par ;).</span></span></div>
+            <div id="vigie-agents" style="margin-top:8px"></div>
+            <div class="divider"></div>
+            <div class="title-row">Répartition appels par agence<span class="info-btn">i<span class="tip">Les appels sont affectés à une agence selon le nom de la file d'attente : présence de INE, CTA, MED, SO ou PACA/CORSE dans le nom.</span></span></div>
+            <div id="vigie-queue-bars" style="margin-top:10px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ SECTION: SYNAPSE DONNÉES (croisement) ═══════ -->
+    <section id="section-croisement" class="section">
+      <div class="section-header">
+        <div class="section-header-left">
+          <h2>Synapse Données</h2>
+          <p>Croisement interventions × appels Genesys</p>
+        </div>
+      </div>
+
+      <!-- Bandeau avertissement -->
+      <div style="display:flex;align-items:flex-start;gap:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 18px;margin-bottom:20px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Fiabilité limitée — saisie manuelle</div>
+          <div style="font-size:12.5px;color:#78350f;line-height:1.6">Ces indicateurs sont basés sur le croisement de l'<strong>ID RDV</strong> normalisé (format DEL-XXXXXXXXXX) entre les interventions et les notes de conclusion des appels Genesys. La qualité dépend entièrement de la saisie manuelle des techniciens dans le champ "Notes de conclusion" — des erreurs de frappe ou des absences de saisie peuvent fausser les résultats. À interpréter avec prudence.</div>
+        </div>
+      </div>
+
+      <!-- État vide si pas d'appels -->
+      <div id="croisement-empty" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center;gap:14px">
+        <div class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(0,60,130,0.2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <div class="empty-title" style="font-size:16px">Données appels manquantes</div>
+        <div class="empty-sub">Importez le fichier appels Genesys pour activer le croisement avec les interventions.</div>
+      </div>
+
+      <!-- Contenu croisement -->
+      <div id="croisement-content">
+        <!-- KPIs croisement -->
+        <div class="grid grid-4 mb-16" id="croisement-kpis"></div>
+
+        <!-- Contact OK/NOK + DMT OK/NOK côte à côte -->
+        <div class="grid grid-2 mb-16">
+          <!-- Contact breakdown -->
+          <div class="card">
+            <div class="title-row">
+              Contact détecté par statut
+              <span class="info-btn">i<span class="tip">Pour chaque intervention OK ou NOK, on vérifie si un appel Genesys avec la même note de conclusion (ID RDV normalisé) existe. "Avec Contact" = au moins un appel trouvé. "Sans Contact" = aucun appel correspondant.</span></span>
+            </div>
+            <div id="croisement-contact-chart"></div>
+          </div>
+
+          <!-- DMT -->
+          <div class="card">
+            <div class="title-row">
+              DMT moyen par statut d'intervention
+              <span class="info-btn">i<span class="tip">Durée Moyenne de Traitement calculée uniquement sur les appels croisés (ayant un ID RDV reconnu). Comparaison entre les appels liés à des interventions OK vs NOK.</span></span>
+            </div>
+            <div id="croisement-dmt-chart"></div>
+          </div>
+        </div>
+
+        <!-- Tableau de synthèse par région -->
+        <div class="card mb-16">
+          <div class="title-row">Synthèse croisement par agence</div>
+          <div class="overflow-auto">
+            <table class="data-table" id="croisement-region-table"></table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /dashboard-content -->
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// MAPPING DÉPARTEMENT → RÉGION
+// ═══════════════════════════════════════════════════════════════
+const DEPT_REGION = {
+  1:'CTA',2:'INE',4:'PACA',5:'PACA',6:'PACA',7:'CTA',8:'INE',
+  10:'INE',13:'PACA',16:'SO',18:'INE',20:'Corse',21:'CTA',
+  30:'SO',31:'SO',32:'SO',33:'SO',34:'SO',38:'CTA',39:'CTA',
+  45:'INE',46:'SO',47:'SO',51:'INE',52:'INE',54:'INE',55:'INE',
+  57:'INE',58:'CTA',59:'INE',60:'INE',69:'CTA',71:'CTA',73:'CTA',
+  74:'CTA',77:'INE',81:'SO',82:'SO',83:'PACA',84:'PACA',87:'SO',88:'INE',
+  89:'INE',93:'INE',94:'INE'
+};
+
+const KNOWN_REGIONS = ['CTA','SO','PACA','INE','Corse'];
+const REGION_COLORS = {
+  CTA: '#0078d4', SO: '#00c896',
+  PACA: '#f59e0b', INE: '#7c3aed',
+  Corse: '#00b4d8'
+};
+
+// Column name normalization helpers
+function normalize(s){ return (s||'').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+
+function findCol(keys, variants) {
+  for (const v of variants) {
+    const nv = normalize(v);
+    const k = keys.find(k => normalize(k) === nv || normalize(k).includes(nv));
+    if (k !== undefined) return k;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let DATA = []; // processed rows
+let FILE_NAME = '';
+
+// ═══════════════════════════════════════════════════════════════
+// FILE IMPORT
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  loadFile(file);
+  e.target.value = '';
+});
+
+// Drag & drop
+document.body.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('drag-over'); });
+document.body.addEventListener('dragleave', () => document.body.classList.remove('drag-over'));
+document.body.addEventListener('drop', e => {
+  e.preventDefault(); document.body.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+});
+
+function loadFile(file) {
+  FILE_NAME = file.name;
+  document.getElementById('loading-overlay').classList.add('show');
+  const reader = new FileReader();
+  const isCSV = file.name.toLowerCase().endsWith('.csv');
+  reader.onload = e => {
+    try {
+      let wb;
+      if (isCSV) {
+        wb = XLSX.read(e.target.result, { type: 'string', raw: false });
+      } else {
+        wb = XLSX.read(e.target.result, { type: 'binary' });
+      }
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      processData(rows);
+    } catch(err) {
+      alert('Erreur lors de la lecture du fichier : ' + err.message);
+    }
+    document.getElementById('loading-overlay').classList.remove('show');
+  };
+  if (isCSV) reader.readAsText(file, 'UTF-8');
+  else reader.readAsBinaryString(file);
+}
+
+function processData(rows) {
+  if (!rows.length) { alert('Fichier vide ou non reconnu.'); return; }
+
+  const keys = Object.keys(rows[0]);
+  const colDept   = findCol(keys, ['Département','Departement','departement','dept','DEP','DEPT','DEP_NUM','Dep']);
+  const colStatut = findCol(keys, ['Statut du RDV','Statut RDV','StatutRDV','statut rdv','statut','STATUS','Statut_RDV']);
+  const colFerme  = findCol(keys, ['Fermé par','Ferme par','ferme par','closed by','closedby','ferme_par','ValidateurFermeture']);
+  const colId = findCol(keys, [
+    'Numéro','Numero','numero','Number','ID','Id','Reference','Référence',
+    'N°','num','id rdv','id_rdv','intervention','DEL','del_id','numero_rdv',
+    'num_rdv','n° rdv','no rdv','identifiant','ticket'
+  ]);
+
+  if (!colDept)   { alert('Colonne "Département" introuvable. Colonnes détectées : ' + keys.join(', ')); return; }
+  if (!colStatut) { alert('Colonne "Statut du RDV" introuvable. Colonnes détectées : ' + keys.join(', ')); return; }
+
+  DATA = rows.map(r => {
+    const dept = parseInt((r[colDept]||'').toString().replace(/[^0-9]/g,''), 10);
+    const region = DEPT_REGION[dept] || 'Autre';
+    const statut = (r[colStatut]||'').toString().trim().toUpperCase();
+    const ferme  = (colFerme ? (r[colFerme]||'').toString().trim() : '');
+
+    // Try dedicated ID column first, then scan all values for DEL pattern
+    let delId = colId ? normalizeDelId((r[colId]||'').toString()) : null;
+    if (!delId) {
+      // Scan every cell for a DEL-style value (but only if it looks like DEL-...)
+      for (const v of Object.values(r)) {
+        const s = (v||'').toString().trim();
+        if (/del[-\s]?\d{7,12}/i.test(s)) { delId = normalizeDelId(s); break; }
+      }
+    }
+    return { dept, region, statut, ferme, delId, raw: r };
+  });
+
+  const totalRows = DATA.length;
+  document.getElementById('banner-filename').textContent = FILE_NAME;
+  document.getElementById('banner-meta').textContent = `${totalRows} interventions importées`;
+  document.getElementById('import-banner').classList.add('visible');
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('dashboard-content').style.display = 'block';
+
+  renderAll();
+  animateBars();
+}
+
+function resetData() {
+  DATA = []; FILE_NAME = '';
+  document.getElementById('import-banner').classList.remove('visible');
+  document.getElementById('empty-state').classList.remove('hidden');
+  document.getElementById('dashboard-content').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+const pct = (n, d) => d ? Math.round(n / d * 100) : 0;
+const fmt = n => n.toLocaleString('fr-FR');
+
+function pillClass(statut) {
+  if (statut === 'TERMINEE_OK') return 'pill-green';
+  if (statut === 'TERMINEE_NOK') return 'pill-red';
+  return 'pill-grey';
+}
+function dotClass(statut) {
+  if (statut === 'TERMINEE_OK') return 'dot-ok';
+  if (statut === 'TERMINEE_NOK') return 'dot-nok';
+  return 'dot-other';
+}
+
+function makeProgressBar(label, value, max, color, count) {
+  const w = max ? Math.round(value / max * 100) : 0;
+  return `<div class="progress-row">
+    <div class="progress-header">
+      <span>${label}</span>
+      <span style="font-family:Inter;font-weight:700">${count !== undefined ? fmt(count) : value}${count !== undefined ? '' : '%'}</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" style="background:${color};width:${w}%"></div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════════════════════
+function renderAll() {
+  renderPerf();
+  renderTraitement();
+  renderContact();
+  renderTags();
+  renderCroisement();
+}
+
+// ══════════════════════════════
+// SECTION 1 : TAUX DE PERF
+// ══════════════════════════════
+function renderPerf() {
+  const total = DATA.length;
+  const ok = DATA.filter(r => r.statut === 'TERMINEE_OK').length;
+  const nok = DATA.filter(r => r.statut === 'TERMINEE_NOK').length;
+  const okPct = pct(ok, total);
+  const nokPct = pct(nok, total);
+
+  // Best / worst region
+  const regionStats = {};
+  KNOWN_REGIONS.forEach(r => regionStats[r] = { ok:0, nok:0, total:0 });
+  DATA.forEach(r => {
+    if (!regionStats[r.region]) regionStats[r.region] = { ok:0, nok:0, total:0 };
+    regionStats[r.region].total++;
+    if (r.statut === 'TERMINEE_OK') regionStats[r.region].ok++;
+    if (r.statut === 'TERMINEE_NOK') regionStats[r.region].nok++;
+  });
+
+  const regionsWithData = Object.entries(regionStats).filter(([,v]) => v.total > 0);
+
+  // All unique statuses — used throughout
+  const allStatuts = [...new Set(DATA.map(r => r.statut))].sort();
+
+  // KPIs — 7 cards: row1 (4) + row2 (3)
+  const autres = DATA.filter(r => r.statut !== 'TERMINEE_OK' && r.statut !== 'TERMINEE_NOK').length;
+  const valideEarly = DATA.filter(r => r.ferme !== '').length;
+  const nonValideEarly = DATA.filter(r => r.ferme === '').length;
+  const okValide = DATA.filter(r => r.statut === 'TERMINEE_OK' && r.ferme !== '').length;
+
+  document.getElementById('perf-kpis-row1').innerHTML = `
+    <div class="kpi-card" style="--accent-color:var(--accent)">
+      <div class="kpi-label-row">Total RDV<span class="info-btn">i<span class="tip">Nombre total de lignes dans le fichier importé, toutes régions et tous statuts confondus.</span></span></div>
+      <div class="kpi-value">${fmt(total)}</div>
+      <div class="kpi-sub">Toutes régions confondues</div>
+      <div class="kpi-badge badge-blue">${allStatuts.length} statuts distincts</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--green)">
+      <div class="kpi-label-row">RDV Terminés OK<span class="info-btn">i<span class="tip">Nombre d'interventions avec statut TERMINEE_OK. Taux = OK ÷ total toutes régions × 100.</span></span></div>
+      <div class="kpi-value">${fmt(ok)}</div>
+      <div class="kpi-sub">sur ${fmt(total)} total</div>
+      <div class="kpi-badge badge-green">${okPct}% de succès</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--red)">
+      <div class="kpi-label-row">RDV Terminés NOK<span class="info-btn">i<span class="tip">Nombre d'interventions avec statut TERMINEE_NOK. Taux = NOK ÷ total toutes régions × 100. Proxy du taux de réitération.</span></span></div>
+      <div class="kpi-value">${fmt(nok)}</div>
+      <div class="kpi-sub">Échecs toutes régions</div>
+      <div class="kpi-badge badge-red">${nokPct}% d'échec</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--purple)">
+      <div class="kpi-label-row">Autres statuts<span class="info-btn">i<span class="tip">Interventions dont le statut n'est ni TERMINEE_OK ni TERMINEE_NOK (ex : annulé, en cours, en attente…). Exclues du calcul du taux de perf.</span></span></div>
+      <div class="kpi-value">${fmt(autres)}</div>
+      <div class="kpi-sub">${[...new Set(DATA.filter(r=>r.statut!=='TERMINEE_OK'&&r.statut!=='TERMINEE_NOK').map(r=>r.statut))].length} statut(s) distincts</div>
+      <div class="kpi-badge ${autres>0?'badge-amber':'badge-green'}">${pct(autres,total)}% du total</div>
+    </div>`;
+
+  document.getElementById('perf-kpis-row2').innerHTML = `
+    <div class="kpi-card" style="--accent-color:var(--green)">
+      <div class="kpi-label-row">RDV Validés<span class="info-btn">i<span class="tip">Interventions dont le champ "Fermé par" est renseigné. Une entrée non vide indique qu'un responsable a validé l'intervention.</span></span></div>
+      <div class="kpi-value">${fmt(valideEarly)}</div>
+      <div class="kpi-sub">Champ "Fermé par" renseigné</div>
+      <div class="kpi-badge badge-green">${pct(valideEarly,total)}% du total</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--red)">
+      <div class="kpi-label-row">Non Validés<span class="info-btn">i<span class="tip">Interventions dont le champ "Fermé par" est vide. Indique l'absence de validation par un superviseur ou gestionnaire.</span></span></div>
+      <div class="kpi-value">${fmt(nonValideEarly)}</div>
+      <div class="kpi-sub">Champ "Fermé par" vide</div>
+      <div class="kpi-badge ${pct(nonValideEarly,total)>30?'badge-red':'badge-amber'}">${pct(nonValideEarly,total)}% sans validateur</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--amber)">
+      <div class="kpi-label-row">OK + Validés<span class="info-btn">i<span class="tip">Interventions TERMINEE_OK ET dont le champ "Fermé par" est renseigné. Représente les dossiers complets et clôturés de bout en bout.</span></span></div>
+      <div class="kpi-value">${fmt(okValide)}</div>
+      <div class="kpi-sub">OK et fermé par quelqu'un</div>
+      <div class="kpi-badge badge-amber">Clôturés complets</div>
+    </div>`;
+
+  // Per-region cards — mini table: Total / OK / NOK / Validé / Non Validé
+  let regionsHtml = '';
+  regionsWithData.forEach(([name, stats]) => {
+    const regionData = DATA.filter(r => r.region === name);
+    const rOK    = regionData.filter(r => r.statut === 'TERMINEE_OK').length;
+    const rNOK   = regionData.filter(r => r.statut === 'TERMINEE_NOK').length;
+    const rVal   = regionData.filter(r => r.ferme !== '').length;
+    const rNVal  = regionData.filter(r => r.ferme === '').length;
+    const rTotal = stats.total;
+
+    const rc = { CTA:'#0078d4', SO:'#00c896', PACA:'#f59e0b', INE:'#7c3aed', Corse:'#00b4d8' }[name] || '#546e8a';
+    const okColor  = 'var(--green)';
+    const nokColor = 'var(--red)';
+
+    regionsHtml += `<div class="perf-region region-${name.replace(/\s/g,'-')}">
+      <div class="perf-region-header">
+        <div class="region-name">${name}</div>
+        <span class="info-btn">i<span class="tip">Résultats de la région ${name}. Taux OK = TERMINEE_OK ÷ total. Taux Validé = "Fermé par" renseigné ÷ total.</span></span>
+        <span class="region-badge" style="margin-left:auto">${fmt(rTotal)} RDV</span>
+      </div>
+      <table class="data-table" style="margin:0">
+        <thead>
+          <tr>
+            <th>Indicateur</th>
+            <th style="text-align:right">Nb</th>
+            <th style="text-align:right">%</th>
+            <th style="text-align:right;width:80px">Barre</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color:var(--muted2)">Total</td>
+            <td class="td-num" style="text-align:right">${fmt(rTotal)}</td>
+            <td style="text-align:right;color:var(--muted2)">100%</td>
+            <td style="text-align:right;padding-right:16px">
+              <div class="perf-bar-wrap" style="width:100%;display:inline-block"><div class="perf-bar" style="background:${rc};opacity:0.35;width:100%"></div></div>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-green">TERMINEE_OK</span></td>
+            <td class="td-num" style="text-align:right;color:${okColor}">${fmt(rOK)}</td>
+            <td style="text-align:right;color:${okColor};font-family:Inter;font-weight:700">${pct(rOK,rTotal)}%</td>
+            <td style="padding-right:16px">
+              <div class="perf-bar-wrap" style="width:100%;display:inline-block"><div class="perf-bar" style="background:${okColor};width:${pct(rOK,rTotal)}%"></div></div>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-red">TERMINEE_NOK</span></td>
+            <td class="td-num" style="text-align:right;color:${nokColor}">${fmt(rNOK)}</td>
+            <td style="text-align:right;color:${nokColor};font-family:Inter;font-weight:700">${pct(rNOK,rTotal)}%</td>
+            <td style="padding-right:16px">
+              <div class="perf-bar-wrap" style="width:100%;display:inline-block"><div class="perf-bar" style="background:${nokColor};width:${pct(rNOK,rTotal)}%"></div></div>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-green">Validé</span></td>
+            <td class="td-num" style="text-align:right;color:${okColor}">${fmt(rVal)}</td>
+            <td style="text-align:right;color:${okColor};font-family:Inter;font-weight:700">${pct(rVal,rTotal)}%</td>
+            <td style="padding-right:16px">
+              <div class="perf-bar-wrap" style="width:100%;display:inline-block"><div class="perf-bar" style="background:${okColor};width:${pct(rVal,rTotal)}%"></div></div>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-red">Non Validé</span></td>
+            <td class="td-num" style="text-align:right;color:${nokColor}">${fmt(rNVal)}</td>
+            <td style="text-align:right;color:${nokColor};font-family:Inter;font-weight:700">${pct(rNVal,rTotal)}%</td>
+            <td style="padding-right:16px">
+              <div class="perf-bar-wrap" style="width:100%;display:inline-block"><div class="perf-bar" style="background:${nokColor};width:${pct(rNVal,rTotal)}%"></div></div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+  });
+  document.getElementById('perf-regions').innerHTML = regionsHtml;
+
+  // Comparison bars + participation donuts (OK & NOK)
+  const RC = { CTA:'#0078d4', SO:'#00c896', PACA:'#f59e0b', INE:'#7c3aed', Corse:'#00b4d8' };
+  const sortedRegions = [...regionsWithData].sort((a,b) => pct(b[1].ok,b[1].total) - pct(a[1].ok,a[1].total));
+
+  // OK donut: each region's OK count / total OK
+  const totalOK = ok;
+  const okSegments = sortedRegions
+    .filter(([,v]) => v.ok > 0)
+    .map(([name, v]) => ({
+      label: `${name} — ${fmt(v.ok)} (${pct(v.ok,totalOK)}%)`,
+      pct: pct(v.ok, totalOK),
+      color: RC[name] || '#546e8a'
+    }));
+  renderRingChart('perf-ring-svg', 'perf-ring-legend', okSegments, totalOK);
+
+  // NOK donut: each region's NOK count / total NOK
+  const totalNOK = nok;
+  const nokSegments = sortedRegions
+    .filter(([,v]) => v.nok > 0)
+    .map(([name, v]) => ({
+      label: `${name} — ${fmt(v.nok)} (${totalNOK ? pct(v.nok,totalNOK) : 0}%)`,
+      pct: totalNOK ? pct(v.nok, totalNOK) : 0,
+      color: RC[name] || '#546e8a'
+    }));
+  renderRingChart('perf-nok-ring-svg', 'perf-nok-ring-legend', nokSegments, totalNOK);
+
+  // Progress bars (one per region, shows OK%)
+  let barsHtml = '';
+  sortedRegions.forEach(([name, v]) => {
+    const p = pct(v.ok, v.total);
+    const rc = RC[name] || '#546e8a';
+    barsHtml += `<div class="progress-row">
+      <div class="progress-header">
+        <span style="font-weight:600;color:${rc}">${name}</span>
+        <span style="font-family:Inter;font-weight:700;color:${rc}">${p}%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="background:${rc};width:${p}%"></div></div>
+    </div>`;
+  });
+  document.getElementById('perf-comparison').innerHTML = barsHtml;
+
+  // ── STATUT & VALIDATION (fusionné) ──────────────────────────
+  // valideEarly, nonValideEarly, okValide already computed above
+  // allStatuts already declared above — reused here
+
+  // Ring chart validé/non validé
+  renderRingChart('validation-ring-svg', 'validation-ring-legend', [
+    { label: `Validé — ${fmt(valideEarly)} (${pct(valideEarly,total)}%)`, pct: pct(valideEarly,total), color: '#10b981' },
+    { label: `Non Validé — ${fmt(nonValideEarly)} (${pct(nonValideEarly,total)}%)`, pct: pct(nonValideEarly,total), color: '#f43f5e' }
+  ], total);
+
+  // Validation bars by region
+  const validRegionStats = {};
+  DATA.forEach(r => {
+    if (!validRegionStats[r.region]) validRegionStats[r.region] = { val:0, total:0 };
+    validRegionStats[r.region].total++;
+    if (r.ferme !== '') validRegionStats[r.region].val++;
+  });
+  let valBars = '';
+  Object.entries(validRegionStats).filter(([,v])=>v.total>0)
+    .sort((a,b)=>pct(b[1].val,b[1].total)-pct(a[1].val,a[1].total))
+    .forEach(([name,v]) => {
+      const p = pct(v.val, v.total);
+      const rc = { CTA:'#0078d4', SO:'#00c896', PACA:'#f59e0b', INE:'#7c3aed', Corse:'#00b4d8' }[name] || '#546e8a';
+      valBars += `<div class="progress-row">
+        <div class="progress-header"><span style="color:${rc};font-weight:600">${name}</span><span style="font-family:Inter;font-weight:700;color:${rc}">${p}%</span></div>
+        <div class="progress-track"><div class="progress-fill" style="background:${rc};width:${p}%"></div></div>
+      </div>`;
+    });
+  document.getElementById('statut-validation-bars').innerHTML = valBars;
+}
+
+// ══════════════════════════════
+// SECTION 3 : TRAITEMENT VCR
+// ══════════════════════════════
+function renderTraitement() {
+  const total = DATA.length;
+  const ok = DATA.filter(r => r.statut === 'TERMINEE_OK').length;
+  const nok = DATA.filter(r => r.statut === 'TERMINEE_NOK').length;
+
+  // "Traitement immédiat" = TERMINEE_OK (validé immédiatement = fermé par quelqu'un + OK)
+  const immediat = DATA.filter(r => r.statut === 'TERMINEE_OK' && r.ferme !== '').length;
+  const differe = total - immediat;
+
+  document.getElementById('traitement-kpis').innerHTML = `
+    <div class="kpi-card" style="--accent-color:var(--accent2)">
+      <div class="kpi-label-row">Traitement immédiat<span class="info-btn">i<span class="tip">Interventions TERMINEE_OK avec champ "Fermé par" renseigné. Représente le flux direct : intervention réussie ET validée sans retraitement.</span></span></div>
+      <div class="kpi-value">${fmt(immediat)}</div>
+      <div class="kpi-sub">OK + Validé (flux direct)</div>
+      <div class="kpi-badge badge-blue">${pct(immediat,total)}% du total</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--purple)">
+      <div class="kpi-label-row">Traitement différé<span class="info-btn">i<span class="tip">Interventions nécessitant un post-traitement : soit NOK, soit non validées, soit statut autre. Calcul : total − (OK + Validé).</span></span></div>
+      <div class="kpi-value">${fmt(differe)}</div>
+      <div class="kpi-sub">Post-traitement requis</div>
+      <div class="kpi-badge" style="background:rgba(139,92,246,0.12);color:var(--purple)">${pct(differe,total)}%</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--green)">
+      <div class="kpi-label-row">Taux de résolution directe<span class="info-btn">i<span class="tip">Part des interventions traitées et validées immédiatement. Calcul : (OK+Validé) ÷ total × 100. Objectif cible fixé à 80%.</span></span></div>
+      <div class="kpi-value">${pct(immediat,total)}%</div>
+      <div class="kpi-sub">${fmt(immediat)} / ${fmt(total)} total</div>
+      <div class="kpi-badge ${pct(immediat,total)>=80?'badge-green':'badge-amber'}">Objectif : 80%</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--amber)">
+      <div class="kpi-label-row">Taux de réitération<span class="info-btn">i<span class="tip">Proxy calculé comme le taux de TERMINEE_NOK. Un NOK implique une nouvelle intervention à planifier. Calcul : NOK ÷ total × 100. Seuil : 15%.</span></span></div>
+      <div class="kpi-value">${pct(nok,total)}%</div>
+      <div class="kpi-sub">${fmt(nok)} NOK sur ${fmt(total)}</div>
+      <div class="kpi-badge ${pct(nok,total)<=15?'badge-green':'badge-red'}">Seuil : 15%</div>
+    </div>`;
+
+  // DMT table (static data since we don't have duration in file)
+  document.getElementById('dmt-table').innerHTML = `
+    <thead><tr><th>Résultat</th><th>DMT moyen</th><th>Volume</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill pill-green">TERMINEE_OK</span></td><td class="td-num">—</td><td class="td-num">${fmt(ok)}</td></tr>
+      <tr><td><span class="pill pill-red">TERMINEE_NOK</span></td><td class="td-num">—</td><td class="td-num">${fmt(nok)}</td></tr>
+      <tr><td style="color:var(--muted2)">Autres statuts</td><td class="td-num">—</td><td class="td-num">${fmt(total-ok-nok)}</td></tr>
+      <tr><td style="font-weight:700;color:var(--text)">Global</td><td class="td-num" style="color:var(--accent)">—</td><td class="td-num" style="color:var(--accent)">${fmt(total)}</td></tr>
+    </tbody>`;
+  // Note about DMT
+  document.getElementById('dmt-region-table').innerHTML = `
+    <thead><tr><th>Région</th><th>Total RDV</th><th>OK</th><th>NOK</th><th>Taux OK</th></tr></thead>
+    <tbody>${(() => {
+      const stats = {};
+      DATA.forEach(r => {
+        if (!stats[r.region]) stats[r.region] = {total:0,ok:0,nok:0};
+        stats[r.region].total++;
+        if (r.statut==='TERMINEE_OK') stats[r.region].ok++;
+        if (r.statut==='TERMINEE_NOK') stats[r.region].nok++;
+      });
+      return Object.entries(stats).filter(([,v])=>v.total>0).map(([name,v]) =>
+        `<tr><td>${name}</td><td class="td-num">${fmt(v.total)}</td><td class="td-num" style="color:var(--green)">${fmt(v.ok)}</td><td class="td-num" style="color:var(--red)">${fmt(v.nok)}</td><td><span class="pill ${pct(v.ok,v.total)>=80?'pill-green':'pill-amber'}">${pct(v.ok,v.total)}%</span></td></tr>`
+      ).join('');
+    })()}</tbody>`;
+
+  // Reit
+  document.getElementById('reit-main').innerHTML = `
+    <div style="font-family:Inter;font-size:44px;font-weight:700;color:${pct(nok,total)>15?'var(--red)':'var(--amber)'}">${pct(nok,total)}%</div>
+    <div style="font-size:12px;color:var(--muted2);margin-top:4px">${fmt(nok)} NOK nécessitant une réitération sur ${fmt(total)} interventions</div>`;
+
+  // Reit by region
+  const rs = {};
+  DATA.forEach(r => {
+    if (!rs[r.region]) rs[r.region] = {total:0,nok:0};
+    rs[r.region].total++;
+    if (r.statut==='TERMINEE_NOK') rs[r.region].nok++;
+  });
+  const maxNok = Math.max(...Object.values(rs).map(v=>v.nok));
+  document.getElementById('reit-bars').innerHTML = Object.entries(rs).filter(([,v])=>v.total>0)
+    .sort((a,b)=>pct(b[1].nok,b[1].total)-pct(a[1].nok,a[1].total))
+    .map(([name,v]) => {
+      const p = pct(v.nok, v.total);
+      const color = p>=20?'var(--red)':p>=10?'var(--amber)':'var(--green)';
+      return `<div class="progress-row">
+        <div class="progress-header"><span>${name}</span><span style="font-family:Inter;font-weight:700;color:${color}">${p}% (${v.nok})</span></div>
+        <div class="progress-track"><div class="progress-fill" style="background:${color};width:${maxNok?Math.round(v.nok/maxNok*100):0}%"></div></div>
+      </div>`;
+    }).join('');
+}
+
+// ══════════════════════════════
+// SECTION 4 : SANS CONTACT
+// ══════════════════════════════
+function renderContact() {
+  // "Sans contact" = statut is neither TERMINEE_OK nor TERMINEE_NOK (could be cancelled, not reached, etc)
+  // OR: any row where statut is TERMINEE_NOK (intervention failed)
+  // For now, we interpret "sans contact" as rows with statut that's not TERMINEE_OK
+  const sc = DATA.filter(r => r.statut !== 'TERMINEE_OK');
+  const scOk  = sc.filter(r => r.ferme !== '').length;
+  const scNok = sc.filter(r => r.statut === 'TERMINEE_NOK').length;
+  const scTotal = sc.length;
+  const total = DATA.length;
+
+  document.getElementById('contact-kpis').innerHTML = `
+    <div class="kpi-card" style="--accent-color:var(--red)">
+      <div class="kpi-label-row">Sans Contact Total<span class="info-btn">i<span class="tip">Interventions non terminées en TERMINEE_OK. Regroupe les NOK, annulés, en cours, etc. Calcul : total − nb TERMINEE_OK.</span></span></div>
+      <div class="kpi-value">${fmt(scTotal)}</div>
+      <div class="kpi-sub">RDV non aboutis en OK</div>
+      <div class="kpi-badge badge-red">${pct(scTotal,total)}% du total</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--amber)">
+      <div class="kpi-label-row">SC — TERMINEE_NOK<span class="info-btn">i<span class="tip">Sous-ensemble des sans-contact avec statut explicite TERMINEE_NOK. Intervention tentée mais échouée. Calcul : nb NOK dans la population SC.</span></span></div>
+      <div class="kpi-value">${fmt(scNok)}</div>
+      <div class="kpi-sub">Intervention terminée NOK</div>
+      <div class="kpi-badge badge-red">${pct(scNok,scTotal||1)}% du SC</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--purple)">
+      <div class="kpi-label-row">SC — Autres statuts<span class="info-btn">i<span class="tip">Sans-contact avec un statut ni OK ni NOK : annulés, en attente, en cours… Calcul : SC total − SC NOK.</span></span></div>
+      <div class="kpi-value">${fmt(scTotal-scNok)}</div>
+      <div class="kpi-sub">Annulés / En cours / etc.</div>
+      <div class="kpi-badge badge-amber">${pct(scTotal-scNok,scTotal||1)}% du SC</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--accent)">
+      <div class="kpi-label-row">Taux Sans Contact<span class="info-btn">i<span class="tip">Part des interventions non abouties en OK sur le total du fichier. Calcul : SC total ÷ total × 100. Seuil d'alerte interne : 15%.</span></span></div>
+      <div class="kpi-value">${pct(scTotal,total)}%</div>
+      <div class="kpi-sub">Sur ${fmt(total)} total</div>
+      <div class="kpi-badge ${pct(scTotal,total)>15?'badge-red':'badge-amber'}">Seuil alerte: 15%</div>
+    </div>`;
+
+  // SC by region
+  const rs = {};
+  sc.forEach(r => {
+    if (!rs[r.region]) rs[r.region] = { scNok:0, scOther:0, total:0, scTotal:0 };
+    rs[r.region].scTotal++;
+    if (r.statut==='TERMINEE_NOK') rs[r.region].scNok++;
+    else rs[r.region].scOther++;
+  });
+  // Add total per region for rate
+  DATA.forEach(r => {
+    if (!rs[r.region]) rs[r.region] = { scNok:0, scOther:0, total:0, scTotal:0 };
+    rs[r.region].total++;
+  });
+
+  document.getElementById('contact-region-table').innerHTML = `
+    <thead><tr><th>Région</th><th>SC NOK</th><th>SC Autres</th><th>Total SC</th><th>Taux SC</th></tr></thead>
+    <tbody>${Object.entries(rs).filter(([,v])=>v.total>0).map(([name,v]) =>
+      `<tr><td>${name}</td>
+       <td class="td-num" style="color:var(--red)">${fmt(v.scNok)}</td>
+       <td class="td-num" style="color:var(--amber)">${fmt(v.scOther)}</td>
+       <td class="td-num">${fmt(v.scTotal)}</td>
+       <td><span class="pill ${pct(v.scTotal,v.total)>15?'pill-red':'pill-amber'}">${pct(v.scTotal,v.total)}%</span></td>
+      </tr>`).join('')}</tbody>`;
+
+  // SC detail table (capped at 50 rows)
+  const scRows = sc.slice(0, 50);
+  const regionStats = {};
+  DATA.forEach(r => {
+    if (!regionStats[r.region]) regionStats[r.region] = 0;
+    regionStats[r.region]++;
+  });
+  document.getElementById('contact-detail-table').innerHTML = `
+    <thead><tr><th>Région</th><th>Dépt.</th><th>Statut</th><th>Fermé par</th></tr></thead>
+    <tbody>${scRows.map(r =>
+      `<tr><td>${r.region}</td><td>${r.dept||'—'}</td><td><span class="pill ${pillClass(r.statut)}">${r.statut||'—'}</span></td><td style="color:${r.ferme?'var(--green)':'var(--red)'}">${r.ferme||'Non renseigné'}</td></tr>`
+    ).join('')}
+    ${sc.length>50?`<tr><td colspan="4" style="text-align:center;color:var(--muted);font-size:11px">… et ${fmt(sc.length-50)} autres lignes</td></tr>`:''}
+    </tbody>`;
+}
+
+// ══════════════════════════════
+// SECTION 6 : TAGS — insights auto
+// ══════════════════════════════
+function renderTags() {
+  const total = DATA.length;
+  const ok = DATA.filter(r=>r.statut==='TERMINEE_OK').length;
+  const nok = DATA.filter(r=>r.statut==='TERMINEE_NOK').length;
+  const nonValide = DATA.filter(r=>r.ferme==='').length;
+  const nokPct = pct(nok,total);
+  const nvPct = pct(nonValide,total);
+
+  const worstRegion = (() => {
+    const rs = {};
+    DATA.forEach(r => { if(!rs[r.region])rs[r.region]={t:0,nok:0}; rs[r.region].t++; if(r.statut==='TERMINEE_NOK')rs[r.region].nok++; });
+    return Object.entries(rs).filter(([,v])=>v.t>0).sort((a,b)=>pct(b[1].nok,b[1].t)-pct(a[1].nok,a[1].t))[0];
+  })();
+
+  document.getElementById('insights-grid').innerHTML = `
+    <div class="insight-alert ${nokPct>15?'insight-red':'insight-amber'}">
+      <div class="insight-alert-title">${nokPct>15?'⚠ Priorité haute':'⚡ À surveiller'}</div>
+      <div class="insight-alert-body">${fmt(nok)} RDV terminés NOK sur ${fmt(total)} — taux de ${nokPct}%. ${nokPct>15?'Dépasse le seuil de 15%, action corrective recommandée.':'Proche du seuil, à surveiller.'}</div>
+    </div>
+    <div class="insight-alert ${nvPct>30?'insight-red':'insight-amber'}">
+      <div class="insight-alert-title">📋 Validation</div>
+      <div class="insight-alert-body">${fmt(nonValide)} interventions sans validateur (${nvPct}%). Vérifier le remplissage du champ "Fermé par" pour assurer la traçabilité.</div>
+    </div>
+    ${worstRegion?`<div class="insight-alert insight-red">
+      <div class="insight-alert-title">📍 Région à fort taux NOK</div>
+      <div class="insight-alert-body">La région <strong>${worstRegion[0]}</strong> présente le taux NOK le plus élevé : ${pct(worstRegion[1].nok,worstRegion[1].t)}% (${fmt(worstRegion[1].nok)} NOK). Une revue des techniciens affectés est recommandée.</div>
+    </div>`:''}`;
+}
+
+// ══════════════════════════════
+// RING CHART SVG
+// ══════════════════════════════
+function renderRingChart(svgId, legendId, segments, total) {
+  const svg = document.getElementById(svgId);
+  const legend = document.getElementById(legendId);
+  const cx = 55, cy = 55, r = 42;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  let svgInner = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(0,60,130,0.06)" stroke-width="14"/>`;
+  segments.forEach(seg => {
+    const dash = (seg.pct / 100) * circ;
+    const rotate = -90 + (offset / 100) * 360;
+    svgInner += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="14"
+      stroke-dasharray="${dash} ${circ}" stroke-linecap="round"
+      transform="rotate(${rotate} ${cx} ${cy})" style="transition:stroke-dasharray 1s"/>`;
+    offset += seg.pct;
+  });
+  svgInner += `<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="var(--text)" font-family="Inter" font-size="17" font-weight="700">${fmt(total)}</text>
+    <text x="${cx}" y="${cy+10}" text-anchor="middle" fill="var(--muted)" font-size="9">Total</text>`;
+  svg.innerHTML = svgInner;
+
+  legend.innerHTML = segments.map(seg =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${seg.color}"></div><span>${seg.label}</span></div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CALLS FILE IMPORT
+// ═══════════════════════════════════════════════════════════════
+let CALLS_DATA = [];
+let CALLS_FILE_NAME = '';
+let REMOVED_AGENTS = new Set(); // agents manually removed by user
+
+document.getElementById('calls-file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  loadCallsFile(file);
+  e.target.value = '';
+});
+
+function loadCallsFile(file) {
+  CALLS_FILE_NAME = file.name;
+  document.getElementById('loading-overlay').classList.add('show');
+  const reader = new FileReader();
+  const isCSV = file.name.toLowerCase().endsWith('.csv');
+  reader.onload = e => {
+    try {
+      let wb;
+      if (isCSV) wb = XLSX.read(e.target.result, { type: 'string', raw: false });
+      else wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      processCallsData(rows);
+    } catch(err) {
+      alert('Erreur lecture fichier appels : ' + err.message);
+    }
+    document.getElementById('loading-overlay').classList.remove('show');
+  };
+  if (isCSV) reader.readAsText(file, 'UTF-8');
+  else reader.readAsBinaryString(file);
+}
+
+// ── DEL ID normalisation ──────────────────────────────────────
+function normalizeDelId(raw) {
+  if (!raw) return null;
+  const s = raw.toString().trim();
+  // Format explicite DEL-XXXXXXXXXX (10 chiffres)
+  const m10 = s.match(/(?:del[-\s]?)?(\d{10})/i);
+  if (m10) return 'DEL-' + m10[1];
+  // Format DEL- suivi de 7-12 chiffres (variantes)
+  const mFlex = s.match(/del[-\s]?(\d{7,12})/i);
+  if (mFlex) return 'DEL-' + mFlex[1];
+  // Séquence numérique seule (7-12 chiffres) — possible ID nu
+  const mNum = s.match(/\b(\d{7,12})\b/);
+  if (mNum) return 'DEL-' + mNum[1];
+  return null;
+}
+
+// ── Queue → region mapping ────────────────────────────────────
+function queueToRegion(queue) {
+  const q = (queue || '').toUpperCase();
+  if (q.includes('INE'))  return 'INE';
+  if (q.includes('CTA'))  return 'CTA';
+  // SO agence : files contenant SO ou MED (Méditerranée)
+  if (q.includes('MED') || q.includes(' SO') || q.includes('-SO') || q.includes('_SO') || q.match(/\bSO\b/) || q.endsWith('SO') || q.startsWith('SO')) return 'SO';
+  if (q.includes('PACA') || q.includes('CORSE')) return 'PACA';
+  // Fallback : si "SO" est sous-chaîne sans autre match
+  if (q.includes('SO'))   return 'SO';
+  return 'Autre';
+}
+
+// ── ms → mm:ss string ─────────────────────────────────────────
+function msToMMSS(ms) {
+  if (!ms || isNaN(ms) || ms <= 0) return '—';
+  const s = Math.round(ms / 1000);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+function processCallsData(rows) {
+  if (!rows.length) { alert('Fichier appels vide ou non reconnu.'); return; }
+
+  const keys = Object.keys(rows[0]);
+  const colAgents   = findCol(keys, ['Utilisateurs - Interaction','Utilisateurs-Interaction','Utilisateurs','agents','agent','users']);
+  const colQueue    = findCol(keys, ['File d\'attente','File d attente','Queue','file_attente','File_attente']);
+  const colNotes    = findCol(keys, ['Notes de conclusion','Notes','conclusion','notes_conclusion','Note']);
+  const colDMT      = findCol(keys, ['Durée totale de traitement','Duree totale de traitement','DurÃ©e totale de traitement','total_handle_time','Handle Time','durée totale']);
+  const colAbandon  = findCol(keys, ['Temps avant abandon','temps_avant_abandon','abandon_time','AbandonTime','Temps avant abandon ','DurÃ©e avant abandon','Durée avant abandon']);
+  const colDMC      = findCol(keys, ['Durée','Duree','DurÃ©e','talk_time','Talk Time','conversation','Duration']);
+
+  if (!colAgents) { alert('Colonne "Utilisateurs - Interaction" introuvable.\nColonnes : ' + keys.join(', ')); return; }
+
+  REMOVED_AGENTS.clear();
+  CALLS_DATA = rows.map(r => {
+    const agentsRaw = (r[colAgents] || '').toString().trim();
+    const agents = agentsRaw ? agentsRaw.split(';').map(a => a.trim()).filter(Boolean) : [];
+    const queue   = (colQueue  ? (r[colQueue]   || '') : '').toString().trim();
+    const notes   = (colNotes  ? (r[colNotes]   || '') : '').toString().trim();
+    const dmtMs   = colDMT    ? parseFloat((r[colDMT]    || '').toString().replace(/[^0-9.]/g,'')) || 0 : 0;
+    const abMs    = colAbandon ? parseFloat((r[colAbandon]|| '').toString().replace(/[^0-9.]/g,'')) || 0 : 0;
+    const abRaw   = (colAbandon ? (r[colAbandon] || '').toString().trim() : '');
+    const dmcMs   = colDMC    ? parseFloat((r[colDMC]    || '').toString().replace(/[^0-9.]/g,'')) || 0 : 0;
+
+    const isAbandoned  = abRaw !== '';  // Temps avant abandon non vide = abandonné
+    const isAnswered   = !isAbandoned && agents.length > 0;
+    const isShortAbort = !isAnswered && abMs <= 10000 && agents.length === 0;
+    const delId = normalizeDelId(notes);
+    const region = queueToRegion(queue);
+
+    return { agents, queue, notes, dmtMs, abMs, abRaw, dmcMs, isAbandoned, isAnswered, isShortAbort, delId, region };
+  });
+
+  const total = CALLS_DATA.length;
+  document.getElementById('calls-banner-filename').textContent = CALLS_FILE_NAME;
+  document.getElementById('calls-banner-meta').textContent = `${total} appels importés`;
+  document.getElementById('calls-banner').classList.add('visible');
+  document.getElementById('btn-calls').classList.add('loaded');
+
+  renderVigie();
+  renderCroisement(); // recalculate cross-data whenever calls are reloaded
+}
+
+function resetCallsData() {
+  CALLS_DATA = []; CALLS_FILE_NAME = '';
+  document.getElementById('calls-banner').classList.remove('visible');
+  document.getElementById('btn-calls').classList.remove('loaded');
+  document.getElementById('vigie-empty').style.display = 'flex';
+  document.getElementById('vigie-content').style.display = 'none';
+  document.getElementById('vigie-subtitle').textContent = 'Importez le fichier appels pour alimenter cette section';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER VIGIE
+// ═══════════════════════════════════════════════════════════════
+function renderVigie() {
+  const calls = CALLS_DATA;
+  const total = calls.length;
+  if (!total) return;
+
+  document.getElementById('vigie-empty').style.display = 'none';
+  document.getElementById('vigie-content').style.display = 'block';
+  document.getElementById('vigie-subtitle').textContent = `${fmt(total)} appels analysés — Genesys PureCloud`;
+
+  // ── Core metrics ─────────────────────────────────────────────
+  const answered    = calls.filter(c => c.isAnswered).length;
+  const shortAbort  = calls.filter(c => c.isShortAbort).length;
+  const abandoned   = calls.filter(c => c.isAbandoned).length;
+
+  const qsBrute     = pct(answered, total);
+  const qsNetDenom  = total - shortAbort;
+  const qsNet       = qsNetDenom > 0 ? Math.round(answered / qsNetDenom * 100) : 0;
+
+  // DMT avg (answered calls with dmtMs > 0)
+  const dmtArr      = calls.filter(c => c.isAnswered && c.dmtMs > 0).map(c => c.dmtMs);
+  const dmtAvg      = dmtArr.length ? dmtArr.reduce((a,b) => a+b, 0) / dmtArr.length : 0;
+
+  // DMC avg
+  const dmcArr      = calls.filter(c => c.isAnswered && c.dmcMs > 0).map(c => c.dmcMs);
+  const dmcAvg      = dmcArr.length ? dmcArr.reduce((a,b) => a+b, 0) / dmcArr.length : 0;
+
+  // Taux décrochage < 60s : calls where (dmtMs - dmcMs) <= 60000 and answered
+  // "Temps d'attente" proxy = dmt - dmc
+  const decroArrMs  = calls.filter(c => c.isAnswered && c.dmtMs > 0 && c.dmcMs > 0)
+                           .map(c => c.dmtMs - c.dmcMs);
+  const decro60     = decroArrMs.length
+    ? pct(decroArrMs.filter(ms => ms <= 60000).length, decroArrMs.length) : 0;
+
+  // Temps moyen avant abandon (abandons non courts)
+  const abArr       = calls.filter(c => c.isAbandoned && c.abMs > 0).map(c => c.abMs);
+  const abAvg       = abArr.length ? abArr.reduce((a,b)=>a+b,0) / abArr.length : 0;
+
+  // CT connectés (unique agents)
+  const agentSet    = new Set();
+  calls.forEach(c => c.agents.forEach(a => agentSet.add(a)));
+  const ctCount     = agentSet.size;
+
+  // ── KPI cards ────────────────────────────────────────────────
+  const qsNetColor  = qsNet >= 95 ? 'var(--green)' : qsNet >= 85 ? 'var(--amber)' : 'var(--red)';
+  const qsNetBadge  = qsNet >= 95 ? 'badge-green' : qsNet >= 85 ? 'badge-amber' : 'badge-red';
+
+  document.getElementById('vigie-kpis').innerHTML = `
+    <div class="kpi-card" style="--accent-color:${qsNetColor}">
+      <div class="kpi-label-row" style="font-weight:800">QS Net <span style="font-size:9px;color:var(--muted)">(objectif 95%)</span><span class="info-btn">i<span class="tip">QS Net = appels répondus ÷ (total − abandons courts ≤10s). Exclut les très courts abandons qui ne reflètent pas un vrai manque de service. Objectif : 95%.</span></span></div>
+      <div class="kpi-value" style="font-size:36px;color:${qsNetColor};font-weight:800">${qsNet}%</div>
+      <div class="kpi-sub">${fmt(answered)} répondus / ${fmt(qsNetDenom)} nets</div>
+      <div class="kpi-badge ${qsNetBadge}">${qsNet >= 95 ? '✓ Objectif atteint' : '⚠ Sous objectif'}</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--accent)">
+      <div class="kpi-label-row">QS Brute<span class="info-btn">i<span class="tip">QS Brute = appels répondus ÷ total appels. Un appel est répondu si "Temps avant abandon" est vide ET "Utilisateurs - Interaction" n'est pas vide.</span></span></div>
+      <div class="kpi-value">${qsBrute}%</div>
+      <div class="kpi-sub">${fmt(answered)} répondus / ${fmt(total)} total</div>
+      <div class="kpi-badge badge-blue">${fmt(shortAbort)} abandons courts exclus</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--amber)">
+      <div class="kpi-label-row">DMT Moyen<span class="info-btn">i<span class="tip">Durée Moyenne de Traitement calculée depuis la colonne "Durée totale de traitement" (en ms). Calculée uniquement sur les appels répondus.</span></span></div>
+      <div class="kpi-value">${msToMMSS(dmtAvg)}</div>
+      <div class="kpi-sub">Durée moy. de traitement</div>
+      <div class="kpi-badge badge-amber">DMC : ${msToMMSS(dmcAvg)}</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--red)">
+      <div class="kpi-label-row">Abandons<span class="info-btn">i<span class="tip">Total abandons = appels où "Temps avant abandon" est renseigné. Abandons courts = abandons ≤ 10 secondes. Attente moy. = moyenne des temps avant abandon des abandons non courts.</span></span></div>
+      <div class="kpi-value">${fmt(abandoned)}</div>
+      <div class="kpi-sub">dont ${fmt(shortAbort)} abandons courts</div>
+      <div class="kpi-badge badge-red">Attente moy. : ${msToMMSS(abAvg)}</div>
+    </div>`;
+
+  // ── Detailed metrics ─────────────────────────────────────────
+  const metricRow = (name, val, color='') =>
+    `<div class="vigie-metric">
+       <span class="vigie-name">${name}</span>
+       <span class="vigie-val"${color ? ` style="color:${color}"` : ''}>${val}</span>
+     </div>`;
+
+  document.getElementById('vigie-details').innerHTML =
+    metricRow('Total appels', fmt(total)) +
+    metricRow('Appels répondus', fmt(answered), 'var(--green)') +
+    metricRow('Abandons totaux', fmt(abandoned), 'var(--red)') +
+    metricRow('Abandons courts (≤ 10s)', fmt(shortAbort), 'var(--muted2)') +
+    `<div class="vigie-metric"><span class="vigie-name" style="font-weight:700">QS Net</span><span class="vigie-val" style="color:${qsNetColor};font-weight:800">${qsNet}%</span></div>` +
+    metricRow('QS Brute', qsBrute + '%') +
+    metricRow('Taux décrochage (< 60s)', decro60 + '%', decro60 >= 80 ? 'var(--green)' : 'var(--amber)') +
+    metricRow('Attente moy. avant abandon', msToMMSS(abAvg)) +
+    metricRow('DMT Moyen', msToMMSS(dmtAvg)) +
+    metricRow('DMC Moyen', msToMMSS(dmcAvg)) +
+    `<div class="vigie-metric"><span class="vigie-name">CT Connectés (peak)</span><span class="vigie-val" id="ct-count-val" style="color:var(--accent)">${fmt(ctCount)}</span></div>`;
+
+  // ── Agents list (removable tags) ─────────────────────────────
+  const agentList = [...agentSet].sort();
+  renderAgentTags(agentList);
+
+  // ── Queue bars ────────────────────────────────────────────────
+  const queueCounts = {};
+  calls.forEach(c => { queueCounts[c.region] = (queueCounts[c.region]||0) + 1; });
+  const RC = { CTA:'#0078d4', SO:'#00c896', PACA:'#f59e0b', INE:'#7c3aed', Corse:'#00b4d8', Autre:'#546e8a' };
+  const maxQ = Math.max(...Object.values(queueCounts));
+  document.getElementById('vigie-queue-bars').innerHTML = Object.entries(queueCounts)
+    .sort((a,b) => b[1]-a[1])
+    .map(([name,cnt]) => {
+      const rc = RC[name] || '#64748b';
+      const w = maxQ ? Math.round(cnt/maxQ*100) : 0;
+      return `<div class="progress-row">
+        <div class="progress-header">
+          <span style="color:${rc};font-weight:600">${name}</span>
+          <span style="font-family:Inter;font-weight:700;color:${rc}">${fmt(cnt)} (${pct(cnt,total)}%)</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="background:${rc};width:${w}%"></div></div>
+      </div>`;
+    }).join('');
+
+  // ── Calls detail table (50 rows) ─────────────────────────────
+  const sample = calls.slice(0, 50);
+  let tHtml = `<thead><tr>
+    <th>File d'attente</th><th>Agence</th><th>Agents</th>
+    <th>ID RDV</th><th>DMT</th><th>DMC</th><th>Statut</th>
+  </tr></thead><tbody>`;
+  sample.forEach(c => {
+    const statut = c.isAnswered ? `<span class="pill pill-green">Répondu</span>`
+      : c.isShortAbort ? `<span class="pill pill-grey">Abandon court</span>`
+      : `<span class="pill pill-red">Abandonné</span>`;
+    const rc = RC[c.region] || '#64748b';
+    tHtml += `<tr>
+      <td style="color:var(--muted2);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.queue||'—'}</td>
+      <td><span style="color:${rc};font-weight:600">${c.region}</span></td>
+      <td style="font-size:11px;color:var(--muted2)">${c.agents.join(', ')||'—'}</td>
+      <td style="font-family:monospace;font-size:11px;color:${c.delId?'var(--accent2)':'var(--muted)'}">${c.delId||'—'}</td>
+      <td class="td-num">${msToMMSS(c.dmtMs)}</td>
+      <td class="td-num">${msToMMSS(c.dmcMs)}</td>
+      <td>${statut}</td>
+    </tr>`;
+  });
+  if (calls.length > 50) tHtml += `<tr><td colspan="7" style="text-align:center;color:var(--muted);font-size:11px">… et ${fmt(calls.length-50)} autres lignes</td></tr>`;
+  tHtml += '</tbody>';
+  const callsTableEl = document.getElementById('vigie-calls-table');
+  if (callsTableEl) callsTableEl.innerHTML = tHtml;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAV
+// ══════════════════════════════
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('section-' + tab.dataset.section).classList.add('active');
+  });
+});
+
+// ══════════════════════════════
+// UTILS
+// ══════════════════════════════
+function animateBars() {
+  // no-op, bars are set directly via style.width
+}
+
+function updateDate() {
+  const now = new Date();
+  document.getElementById('live-date').textContent =
+    now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+// ══════════════════════════════
+// CAPTURE TAB (snapDOM)
+// ══════════════════════════════
+// ══════════════════════════════
+// CAPTURE TAB (html-to-image via importmap — same pattern as VigieVCR)
+// ══════════════════════════════
+async function captureTab(evt, sectionId) {
+  evt.stopPropagation();
+  const btn = evt.currentTarget;
+  const origHTML = btn.innerHTML;
+
+  try {
+    const element = document.getElementById(sectionId);
+    if (!element) throw new Error('Section introuvable: ' + sectionId);
+
+    // Wait up to 5s for ESM module to resolve
+    for (let i = 0; i < 50 && !window._toBlob; i++)
+      await new Promise(r => setTimeout(r, 100));
+
+    if (!window._toBlob) throw new Error('html-to-image non chargé');
+
+    // Download PNG
+    const dataUrl = await window._toPng(element, { backgroundColor: '#f0f4f8', pixelRatio: 2 });
+    Object.assign(document.createElement('a'), { href: dataUrl, download: sectionId + '-' + Date.now() + '.png' }).click();
+
+    // Copy to clipboard
+    try {
+      const blob = await window._toBlob(element, { backgroundColor: '#f0f4f8', pixelRatio: 2 });
+      if (blob) await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      btn.innerHTML = `<svg viewBox="0 0 20 20" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="4 10 8 14 16 6"/></svg>`;
+      setTimeout(() => { btn.innerHTML = origHTML; }, 1800);
+    } catch { btn.innerHTML = origHTML; }
+
+  } catch(err) {
+    console.warn('Capture failed:', err);
+    btn.innerHTML = origHTML;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// AGENT TAGS — removable CT list
+// ═══════════════════════════════════════════════════════════════
+let _allAgents = []; // full list from last import
+
+function renderAgentTags(agentList) {
+  if (agentList && agentList.length) _allAgents = agentList;
+  const container = document.getElementById('vigie-agents');
+  if (!container) return;
+
+  const visible = _allAgents.filter(a => !REMOVED_AGENTS.has(a));
+  const removedCount = REMOVED_AGENTS.size;
+
+  container.innerHTML = `
+    <div class="agent-tags-wrap">
+      ${visible.map(a => `
+        <span class="agent-tag">
+          ${a}
+          <button class="agent-tag-remove" title="Retirer ${a}" onclick="removeAgent('${a.replace(/'/g,"\\'")}')">✕</button>
+        </span>`).join('')}
+      ${visible.length === 0 ? '<span style="color:var(--muted);font-size:12px">Tous les agents ont été retirés</span>' : ''}
+    </div>
+    <div class="agent-tags-counter">
+      <strong style="font-variant-numeric:tabular-nums">${fmt(visible.length)}</strong> conseiller${visible.length > 1 ? 's' : ''} connecté${visible.length > 1 ? 's' : ''} (peak)
+      ${removedCount > 0 ? `<span style="color:var(--muted)"> — ${removedCount} retiré${removedCount > 1 ? 's' : ''}</span>` : ''}
+    </div>
+    ${removedCount > 0 ? `<button class="agent-tags-reset" onclick="resetAgents()">↺ Restaurer tous les agents</button>` : ''}
+  `;
+
+  // Sync le compteur dans "Indicateurs Genesys détaillés"
+  const ctValEl = document.getElementById('ct-count-val');
+  if (ctValEl) ctValEl.textContent = fmt(visible.length);
+}
+
+function removeAgent(name) {
+  REMOVED_AGENTS.add(name);
+  renderAgentTags();
+}
+
+function resetAgents() {
+  REMOVED_AGENTS.clear();
+  renderAgentTags();
+}
+
+
+function renderCroisement() {
+  const emptyEl   = document.getElementById('croisement-empty');
+  const contentEl = document.getElementById('croisement-content');
+  if (!emptyEl || !contentEl) return;
+
+  // Need both datasets
+  if (!DATA.length || !CALLS_DATA.length) {
+    emptyEl.style.display   = 'flex';
+    contentEl.style.display = 'none';
+    return;
+  }
+  emptyEl.style.display   = 'none';
+  contentEl.style.display = 'block';
+
+  // ── Build a lookup: normalizedDelId → call(s) ────────────────
+  // One ID may appear multiple times (retries) — we keep the best match
+  const callsByDelId = new Map();
+  CALLS_DATA.forEach(c => {
+    if (!c.delId) return;
+    if (!callsByDelId.has(c.delId)) callsByDelId.set(c.delId, []);
+    callsByDelId.get(c.delId).push(c);
+  });
+
+  // ── Cross-reference every intervention ───────────────────────
+  const crossed = DATA.map(row => {
+    const matched = row.delId ? callsByDelId.get(row.delId) || [] : [];
+    const hasContact = matched.length > 0;
+    // For DMT: average dmtMs across matched calls (prefer answered calls)
+    const answeredCalls = matched.filter(c => c.isAnswered);
+    const callsForDmt   = answeredCalls.length ? answeredCalls : matched;
+    const avgDmt = callsForDmt.length
+      ? callsForDmt.reduce((s, c) => s + c.dmtMs, 0) / callsForDmt.length
+      : 0;
+    return { ...row, hasContact, matchedCalls: matched, avgDmt };
+  });
+
+  // ── Global counts ─────────────────────────────────────────────
+  const total      = crossed.length;
+  const withId     = crossed.filter(r => r.delId).length;
+  const matched    = crossed.filter(r => r.hasContact).length;
+  const unmatched  = total - matched;
+  const matchRate  = pct(matched, total);
+
+  const ok  = crossed.filter(r => r.statut === 'TERMINEE_OK');
+  const nok = crossed.filter(r => r.statut === 'TERMINEE_NOK');
+
+  const okWithContact  = ok.filter(r => r.hasContact).length;
+  const okWithout      = ok.length - okWithContact;
+  const nokWithContact = nok.filter(r => r.hasContact).length;
+  const nokWithout     = nok.length - nokWithContact;
+
+  // DMT: only on crossed rows that have a call match
+  const okCrossed  = ok.filter(r => r.hasContact && r.avgDmt > 0);
+  const nokCrossed = nok.filter(r => r.hasContact && r.avgDmt > 0);
+  const dmtOk  = okCrossed.length  ? okCrossed.reduce((s,r)  => s + r.avgDmt, 0)  / okCrossed.length  : 0;
+  const dmtNok = nokCrossed.length ? nokCrossed.reduce((s,r) => s + r.avgDmt, 0) / nokCrossed.length : 0;
+
+  // ── KPIs ─────────────────────────────────────────────────────
+  document.getElementById('croisement-kpis').innerHTML = `
+    <div class="kpi-card" style="--accent-color:var(--accent)">
+      <div class="kpi-label">Total interventions</div>
+      <div class="kpi-value">${fmt(total)}</div>
+      <div class="kpi-sub">${fmt(withId)} avec ID RDV détecté</div>
+      <div class="kpi-badge badge-blue">${pct(withId,total)}% avec ID</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--green)">
+      <div class="kpi-label">Avec Contact (croisé)</div>
+      <div class="kpi-value">${fmt(matched)}</div>
+      <div class="kpi-sub">Appel trouvé pour cet ID RDV</div>
+      <div class="kpi-badge badge-green">${matchRate}% du total</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--red)">
+      <div class="kpi-label">Sans Contact (croisé)</div>
+      <div class="kpi-value">${fmt(unmatched)}</div>
+      <div class="kpi-sub">Aucun appel trouvé</div>
+      <div class="kpi-badge badge-red">${100 - matchRate}% du total</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--amber)">
+      <div class="kpi-label">Appels avec ID RDV valide</div>
+      <div class="kpi-value">${fmt(callsByDelId.size)}</div>
+      <div class="kpi-sub">IDs uniques dans Genesys</div>
+      <div class="kpi-badge badge-amber">${fmt(CALLS_DATA.filter(c=>c.delId).length)} notes saisies</div>
+    </div>`;
+
+  // ── Contact chart (stacked bars OK vs NOK) ────────────────────
+  const barRow = (label, withC, withoutC, color) => {
+    const tot = withC + withoutC;
+    const wPct  = tot ? Math.round(withC   / tot * 100) : 0;
+    const woPct = tot ? Math.round(withoutC / tot * 100) : 0;
+    return `
+    <div style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
+        <span style="font-weight:700;color:${color}">${label}</span>
+        <span style="color:var(--muted);font-size:11px">${fmt(tot)} interventions</span>
+      </div>
+      <div style="display:flex;height:28px;border-radius:6px;overflow:hidden;background:var(--border2)">
+        <div style="width:${wPct}%;background:var(--green);display:flex;align-items:center;justify-content:center;transition:width 0.8s ease">
+          ${wPct > 8 ? `<span style="font-size:11px;font-weight:700;color:#fff">${wPct}%</span>` : ''}
+        </div>
+        <div style="width:${woPct}%;background:var(--red);display:flex;align-items:center;justify-content:center;transition:width 0.8s ease">
+          ${woPct > 8 ? `<span style="font-size:11px;font-weight:700;color:#fff">${woPct}%</span>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:6px;font-size:11.5px">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0"></span>Avec Contact : <strong>${fmt(withC)}</strong></span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0"></span>Sans Contact : <strong>${fmt(withoutC)}</strong></span>
+      </div>
+    </div>`;
+  };
+
+  document.getElementById('croisement-contact-chart').innerHTML =
+    barRow('TERMINEE_OK',  okWithContact,  okWithout,  'var(--green)') +
+    barRow('TERMINEE_NOK', nokWithContact, nokWithout, 'var(--red)') +
+    `<div style="margin-top:8px;padding-top:12px;border-top:1px solid var(--border2)">
+      <div style="font-size:11px;color:var(--muted);line-height:1.6">
+        <strong>Lecture :</strong> une barre verte = proportion d'interventions OK ou NOK pour lesquelles un appel Genesys correspondant a été trouvé via l'ID RDV normalisé.
+      </div>
+    </div>`;
+
+  // ── DMT chart ────────────────────────────────────────────────
+  const maxDmt = Math.max(dmtOk, dmtNok, 1);
+  const dmtBar = (label, ms, color, count) => {
+    const w = Math.round(ms / maxDmt * 100);
+    return `
+    <div style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
+        <span style="font-weight:700;color:${color}">${label}</span>
+        <span style="font-family:Inter;font-variant-numeric:tabular-nums;font-weight:700;font-size:18px;color:${color}">${msToMMSS(ms)}</span>
+      </div>
+      <div style="height:10px;background:var(--border2);border-radius:6px;overflow:hidden">
+        <div style="width:${w}%;height:100%;background:${color};border-radius:6px;transition:width 0.9s ease"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">${fmt(count)} appels croisés pris en compte</div>
+    </div>`;
+  };
+
+  document.getElementById('croisement-dmt-chart').innerHTML =
+    (dmtOk === 0 && dmtNok === 0)
+    ? `<div style="color:var(--muted);font-size:13px;padding:24px 0;text-align:center">Aucune donnée DMT disponible — vérifiez la colonne "Durée totale de traitement" dans le fichier appels.</div>`
+    : dmtBar('TERMINEE_OK',  dmtOk,  'var(--green)', okCrossed.length) +
+      dmtBar('TERMINEE_NOK', dmtNok, 'var(--red)',   nokCrossed.length) +
+      `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border2);font-size:11px;color:var(--muted)">
+        ${dmtNok > dmtOk
+          ? `⚠️ Les interventions NOK génèrent en moyenne <strong style="color:var(--red)">${msToMMSS(dmtNok - dmtOk)}</strong> de traitement supplémentaire par rapport aux OK.`
+          : dmtOk > dmtNok
+          ? `Les interventions OK nécessitent en moyenne <strong>${msToMMSS(dmtOk - dmtNok)}</strong> de plus que les NOK.`
+          : `DMT identique entre OK et NOK.`}
+      </div>`;
+
+  // ── Tableau par agence ────────────────────────────────────────
+  const regionMap = {};
+  crossed.forEach(r => {
+    const reg = r.region || 'Autre';
+    if (!regionMap[reg]) regionMap[reg] = { total:0, withContact:0, ok:0, nok:0, okWith:0, nokWith:0, dmtOkSum:0, dmtOkN:0, dmtNokSum:0, dmtNokN:0 };
+    const s = regionMap[reg];
+    s.total++;
+    if (r.hasContact) { s.withContact++; }
+    if (r.statut === 'TERMINEE_OK')  { s.ok++;  if (r.hasContact) { s.okWith++;  if (r.avgDmt) { s.dmtOkSum  += r.avgDmt; s.dmtOkN++;  } } }
+    if (r.statut === 'TERMINEE_NOK') { s.nok++; if (r.hasContact) { s.nokWith++; if (r.avgDmt) { s.dmtNokSum += r.avgDmt; s.dmtNokN++; } } }
+  });
+
+  const RC = { CTA:'#0066cc', SO:'#059669', PACA:'#d97706', INE:'#7c3aed', Corse:'#0099cc', Autre:'#637d96' };
+  let tHtml = `<thead><tr>
+    <th>Agence</th>
+    <th>Total</th>
+    <th>Avec Contact</th>
+    <th>Sans Contact</th>
+    <th>Taux Contact</th>
+    <th>OK → Avec Contact</th>
+    <th>NOK → Avec Contact</th>
+    <th>DMT moy. OK</th>
+    <th>DMT moy. NOK</th>
+  </tr></thead><tbody>`;
+
+  Object.entries(regionMap)
+    .sort((a,b) => b[1].total - a[1].total)
+    .forEach(([reg, s]) => {
+      const rc  = RC[reg] || RC.Autre;
+      const contactRate = pct(s.withContact, s.total);
+      const dmtOkReg  = s.dmtOkN  ? s.dmtOkSum  / s.dmtOkN  : 0;
+      const dmtNokReg = s.dmtNokN ? s.dmtNokSum / s.dmtNokN : 0;
+      tHtml += `<tr>
+        <td><span style="font-weight:700;color:${rc}">${reg}</span></td>
+        <td class="td-num">${fmt(s.total)}</td>
+        <td class="td-num" style="color:var(--green)">${fmt(s.withContact)}</td>
+        <td class="td-num" style="color:var(--red)">${fmt(s.total - s.withContact)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;height:5px;background:var(--border2);border-radius:3px;overflow:hidden">
+              <div style="width:${contactRate}%;height:100%;background:${rc};border-radius:3px"></div>
+            </div>
+            <span style="font-weight:700;font-size:12px;color:${rc};white-space:nowrap">${contactRate}%</span>
+          </div>
+        </td>
+        <td class="td-num">${fmt(s.okWith)} <span style="font-size:10px;color:var(--muted)">(${pct(s.okWith,s.ok)}%)</span></td>
+        <td class="td-num">${fmt(s.nokWith)} <span style="font-size:10px;color:var(--muted)">(${pct(s.nokWith,s.nok)}%)</span></td>
+        <td class="td-num" style="color:var(--green)">${msToMMSS(dmtOkReg)}</td>
+        <td class="td-num" style="color:var(--red)">${msToMMSS(dmtNokReg)}</td>
+      </tr>`;
+    });
+  tHtml += '</tbody>';
+  document.getElementById('croisement-region-table').innerHTML = tHtml;
+}
+
+updateDate();
+</script>
+</body>
+</html>
